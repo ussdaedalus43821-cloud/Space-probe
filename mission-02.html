@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Hollow Ridge · The Hundred-Year Probe</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    header a { color: #eef1e9; font-size: 14px; }
+    .intro { padding-top: 26px; }
+    .intro p { max-width: 75ch; }
+    .feed { background: #20271f; color: white; min-width: 0; }
+    .feed h3 { font-size: 15px; padding: 10px 14px; margin: 0; }
+    .feed h3 span { font-weight: 400; color: #d3dbca; }
+    .feed canvas { display: block; width: 100%; height: auto; }
+    .transport { flex-wrap: wrap; }
+    .transport input { min-width: 110px; }
+    .transport output { font-size: 14px; }
+    .lower { grid-template-columns: 1.5fr 1fr; }
+    .panel h2, .panel p { margin-bottom: 9px; }
+    button, select { min-height: 44px; }
+    .panel button { margin: 4px 3px 4px 0; }
+    .panel button:disabled { opacity: .55; cursor: default; }
+    .panel select { width: 100%; }
+    .panel label { display: block; margin: 8px 0 3px; }
+    .panel output { display: block; font: 14px monospace; margin: 9px 0; }
+    .key { font-size: 13px; }
+    #plot { display: block; width: 100%; background: #edf0e5; }
+    .axis { display: flex; justify-content: space-between; font: 12px monospace; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+    #finding { padding: 12px; background: #e1eaca; border-left: 3px solid #677746; }
+    @media (max-width: 800px) {
+      .lower { grid-template-columns: 1fr; }
+      .brand { font-size: 16px; }
+      .intro { padding-top: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="orbit" aria-hidden="true">✦</span> The Hundred-Year Probe</div>
+    <a href="index.html">Mission 01</a>
+  </header>
+
+  <main>
+    <div class="intro">
+      <div>
+        <div class="eyebrow"><b></b> MISSION 02 / IMPACT SCIENCE</div>
+        <h1>The Hollow Ridge<span>.</span></h1>
+        <p>
+          The first strike sent a bright fragment over the ridge. A second pulse
+          reached the station moments later. Did the falling fragment cause it,
+          or did the original shock echo underground? You have one impactor to find out.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Synchronized cameras</h2>
+      <div id="which"></div>
+    </div>
+
+    <div class="feeds">
+      <section class="feed">
+        <h3>Daughter A <span>· overhead / follow the ground track</span></h3>
+        <canvas id="topView" width="900" height="360"
+                aria-label="Fragment viewed from above"></canvas>
+      </section>
+      <section class="feed">
+        <h3>Daughter B <span>· horizon / watch for touchdown</span></h3>
+        <canvas id="sideView" width="900" height="360"
+                aria-label="Fragment height against the horizon"></canvas>
+      </section>
+    </div>
+
+    <div class="transport">
+      <button id="play">Play</button>
+      <output id="clock"></output>
+      <input id="clockSlider" type="range" min="0" max="16" step=".05"
+             value="0" aria-label="Seconds since impact">
+      <button id="back" aria-label="Back one tenth of a second">−0.1 s</button>
+      <button id="forward" aria-label="Forward one tenth of a second">+0.1 s</button>
+    </div>
+
+    <div class="lower">
+      <section class="panel">
+        <h2>Surface seismometer</h2>
+        <p>
+          Read left to right. Each burst begins when shaking reaches the station.
+          Scrub the replay to find the start of the later burst.
+        </p>
+        <svg id="plot" viewBox="0 0 800 145" role="img"
+             aria-label="Ground motion against time">
+          <defs>
+            <pattern id="grid" width="50" height="24" patternUnits="userSpaceOnUse">
+              <path d="M 50 0 H 0 V 24" fill="none" stroke="#c5cdb9"/>
+            </pattern>
+          </defs>
+          <rect width="800" height="145" fill="url(#grid)"/>
+          <path id="lineA" fill="none" stroke="#405c34" stroke-width="2"/>
+          <path id="lineB" fill="none" stroke="#a45122" stroke-width="2"
+                stroke-dasharray="6 3"/>
+          <line id="cursor" y1="0" y2="145" stroke="#232b20" stroke-width="2"/>
+        </svg>
+        <div class="axis">
+          <span id="axisMin">0 s</span>
+          <span id="axisName">Time since impact</span>
+          <span id="axisMax">16 s</span>
+        </div>
+        <p class="key" id="legend"></p>
+        <div id="compare" hidden>
+          <button id="swap">Review strike 01</button>
+          <label>
+            <input type="checkbox" id="overlay">
+            Overlay both traces at their first ground arrival
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 id="taskTitle">Mark the evidence</h2>
+        <div id="plan">
+          <p>
+            Pause or scrub to the fragment’s touchdown and mark it.
+            Then mark the onset of the second seismic pulse.
+          </p>
+          <div class="actions">
+            <button id="markLand">Mark touchdown</button>
+            <button id="markPulse">Mark second pulse</button>
+          </div>
+          <output id="marks"></output>
+          <label for="site">Choose the follow-up strike site</label>
+          <select id="site">
+            <option value="repeat">Same ridge site · repeat the first experiment</option>
+            <option value="crest">Far ridge crest · a longer fragment flight</option>
+            <option value="plain">Nearby plain · test away from the ridge</option>
+          </select>
+          <button class="primary" id="launch" disabled>Commit final impact ↗</button>
+        </div>
+
+        <div id="archive" hidden>
+          <p id="notes"></p>
+          <p id="calibration"></p>
+          <label for="call">What best explains the second pulse?</label>
+          <select id="call">
+            <option value="">Choose your finding</option>
+            <option value="landing">Fragment touchdown</option>
+            <option value="echo">Underground echo</option>
+            <option value="unknown">Evidence is inconclusive</option>
+          </select>
+          <button id="file" disabled>File finding</button>
+          <p id="finding" role="status" hidden></p>
+          <button id="restart">Restart mission</button>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      THE HUNDRED-YEAR PROBE
+      <span>Simulated camera and seismic records</span>
+    </footer>
+  </main>
+
+  <script>
+    'use strict';
+
+    const byId = id => document.getElementById(id);
+    const duration = 16;
+    const fmt = seconds => seconds.toFixed(2) + ' s';
+
+    const baseline = {
+      name: 'First ridge site', arrival: 2.4, landing: 5.2,
+      pulse: 6.8, travel: 1.6, x: .35, range: .30
+    };
+
+    const sites = {
+      repeat: { ...baseline, name: 'Same ridge site' },
+      crest: {
+        name: 'Far ridge crest', arrival: 2.9, landing: 9.5,
+        pulse: 7.3, travel: 1.8, x: .42, range: .44
+      },
+      plain: {
+        name: 'Nearby plain', arrival: 1.8, landing: 6.2,
+        pulse: null, travel: 1.3, x: .18, range: .38
+      }
+    };
+
+    const terrain = new Image();
+    const limb = new Image();
+    const records = [baseline];
+    let active = 0;
+    let time = 0;
+    let playing = false;
+    let lastFrame = 0;
+    let frameId = 0;
+    let landingMark = null;
+    let pulseMark = null;
+    let siteKey = '';
+
+    function record() {
+      return records[active];
+    }
+
+    function wave(t, data) {
+      function burst(start, size) {
+        if (start === null || t < start) return 0;
+        const elapsed = t - start;
+        return size * Math.sin(elapsed * 19) * Math.exp(-elapsed * 1.4);
+      }
+
+      return .022 * Math.sin(6 * t) + .012 * Math.sin(17 * t)
+        + burst(data.arrival, 1) + burst(data.pulse, .68);
+    }
+
+    function camera(canvas, image, sideView) {
+      const ctx = canvas.getContext('2d');
+      const { width, height } = canvas;
+      const data = record();
+
+      ctx.fillStyle = '#20241f';
+      ctx.fillRect(0, 0, width, height);
+      if (image.complete && image.naturalWidth) {
+        ctx.drawImage(image, 0, 0, width, height);
+      }
+
+      // Both cameras observe the same fragment at the same replay time.
+      const progress = Math.min(1, time / data.landing);
+      const x = width * (data.x + data.range * progress);
+      const ground = height * (sideView ? .53 : .70);
+      const slope = height * (sideView ? -.035 : -.29);
+      const arc = sideView ? 128 : 8;
+      const y = ground + slope * progress - arc * 4 * progress * (1 - progress);
+
+      ctx.strokeStyle = '#d6e5a5';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(width * data.x, ground, 9, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (time < 1.3) {
+        ctx.fillStyle = 'rgba(255,240,175,' + (1 - time / 1.3) + ')';
+        ctx.beginPath();
+        ctx.arc(width * data.x, ground, 3 + time * 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#fff4bf';
+      ctx.shadowColor = '#fff4bf';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (time >= data.landing && time < data.landing + .55) {
+        ctx.strokeStyle = '#ffe7af';
+        ctx.beginPath();
+        ctx.ellipse(x, y, 6 + (time - data.landing) * 18, 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#151b16cc';
+      ctx.fillRect(9, height - 29, 162, 22);
+      ctx.fillStyle = '#eaf6d3';
+      ctx.font = '14px monospace';
+      ctx.fillText('STRIKE 0' + (active + 1) + '  ' + fmt(time), 14, height - 13);
+    }
+
+    function aligned() {
+      return records.length === 2 && byId('overlay').checked;
+    }
+
+    function updateTrace() {
+      const overlay = aligned();
+      const min = overlay ? -3 : 0;
+
+      function path(data) {
+        const points = [];
+        for (let x = 0; x <= 800; x++) {
+          const sampleTime = min + x / 50 + (overlay ? data.arrival : 0);
+          const y = 73 - 65 * wave(sampleTime, data);
+          points.push((x === 0 ? 'M' : 'L') + x + ' ' + y.toFixed(2));
+        }
+        return points.join(' ');
+      }
+
+      byId('lineA').setAttribute('d', path(overlay ? baseline : record()));
+      byId('lineB').setAttribute('d', overlay ? path(records[1]) : '');
+      byId('axisMin').textContent = min + ' s';
+      byId('axisMax').textContent = (min + duration) + ' s';
+      byId('axisName').textContent = overlay
+        ? 'Seconds from first ground arrival' : 'Time since impact';
+      byId('legend').textContent = overlay
+        ? 'Solid green · strike 01 / Dashed amber · strike 02'
+        : 'Solid green · strike 0' + (active + 1);
+    }
+
+    function draw() {
+      camera(byId('topView'), terrain, false);
+      camera(byId('sideView'), limb, true);
+
+      const x = (aligned() ? time - record().arrival + 3 : time) * 50;
+      byId('cursor').setAttribute('x1', x);
+      byId('cursor').setAttribute('x2', x);
+      byId('clock').textContent = 'T+' + fmt(time);
+      byId('clockSlider').value = time;
+      byId('which').textContent = 'STRIKE 0' + (active + 1)
+        + ' / ' + record().name.toUpperCase();
+    }
+
+    function stop() {
+      playing = false;
+      cancelAnimationFrame(frameId);
+      byId('play').textContent = 'Play';
+    }
+
+    function seek(seconds) {
+      stop();
+      time = Math.max(0, Math.min(duration, seconds));
+      draw();
+    }
+
+    function frame(now) {
+      time = Math.min(duration, time + (now - lastFrame) / 1000);
+      lastFrame = now;
+      draw();
+      if (time < duration) {
+        frameId = requestAnimationFrame(frame);
+      } else {
+        stop();
+      }
+    }
+
+    function start() {
+      stop();
+      if (time >= duration) time = 0;
+      playing = true;
+      lastFrame = performance.now();
+      byId('play').textContent = 'Pause';
+      frameId = requestAnimationFrame(frame);
+    }
+
+    byId('play').onclick = () => playing ? stop() : start();
+    byId('clockSlider').oninput = event => seek(Number(event.target.value));
+    byId('back').onclick = () => seek(time - .1);
+    byId('forward').onclick = () => seek(time + .1);
+
+    function updateMarks() {
+      byId('marks').textContent =
+        'Touchdown ' + (landingMark === null ? '—' : fmt(landingMark))
+        + ' / Second pulse ' + (pulseMark === null ? '—' : fmt(pulseMark));
+      byId('launch').disabled = landingMark === null || pulseMark === null;
+    }
+
+    byId('markLand').onclick = () => {
+      stop();
+      landingMark = time;
+      updateMarks();
+    };
+
+    byId('markPulse').onclick = () => {
+      stop();
+      pulseMark = time;
+      updateMarks();
+    };
+
+    byId('launch').onclick = () => {
+      siteKey = byId('site').value;
+      records.push(sites[siteKey]);
+      active = 1;
+
+      byId('plan').hidden = true;
+      byId('archive').hidden = false;
+      byId('compare').hidden = false;
+      byId('taskTitle').textContent = 'Interpret the evidence';
+
+      byId('notes').textContent =
+        'Strike 01 marks: touchdown ' + fmt(landingMark)
+        + ', pulse ' + fmt(pulseMark)
+        + '. The mapped travel time from that landing site to the station is '
+        + fmt(baseline.travel) + '. Your marks imply a delay of '
+        + fmt(pulseMark - landingMark) + '.';
+
+      byId('calibration').textContent =
+        'Strike 02: allow ' + fmt(record().travel)
+        + ' for shaking from the new landing site to reach the station.'
+        + ' Replay the flight and compare the traces.';
+
+      updateTrace();
+      seek(0);
+      start();
+    };
+
+    byId('overlay').onchange = () => {
+      updateTrace();
+      draw();
+    };
+
+    byId('swap').onclick = () => {
+      active = 1 - active;
+      byId('swap').textContent = 'Review strike 0' + (2 - active);
+      updateTrace();
+      seek(time);
+    };
+
+    const verdicts = {
+      repeat:
+        'Both explanations fit. In both strikes the fragment lands at 5.20 s, '
+        + 'and shaking from that site would arrive at 6.80 s. Repeating the '
+        + 'geometry repeats the ambiguity.',
+      crest:
+        'The underground echo fits. The second pulse begins at 7.30 s, while '
+        + 'the fragment is still airborne. On both aligned traces it arrives '
+        + '4.40 s after the first ground motion.',
+      plain:
+        'The comparison favors a ridge echo. The fragment still lands on the '
+        + 'plain, yet the expected touchdown signal at 7.50 s is absent. A weak '
+        + 'landing signal below the station’s sensitivity is still possible.'
+    };
+
+    byId('call').onchange = event => {
+      byId('file').disabled = !event.target.value;
+      byId('finding').hidden = true;
+    };
+
+    byId('file').onclick = () => {
+      const bestFinding = siteKey === 'repeat' ? 'unknown' : 'echo';
+      const supported = byId('call').value === bestFinding;
+      byId('finding').textContent =
+        (supported ? 'Finding supported. ' : 'Reconsider your finding. ')
+        + verdicts[siteKey];
+      byId('finding').hidden = false;
+    };
+
+    byId('restart').onclick = () => location.reload();
+
+    terrain.onload = draw;
+    limb.onload = draw;
+    terrain.src = 'terrain.jpg';
+    limb.src = 'limb.jpg';
+    updateMarks();
+    updateTrace();
+    draw();
+  </script>
+</body>
+</html>
